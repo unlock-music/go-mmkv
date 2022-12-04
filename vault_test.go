@@ -17,10 +17,10 @@ func Test_loadVault(t *testing.T) {
 
 	assert.Equal(t, 2, len(v.Keys()))
 
-	val, ok := v.Get("world")
-	assert.Equal(t, "hello", string(val))
-	assert.True(t, ok)
+	val, err := v.GetString("world")
+	assert.Equal(t, "hello", val)
+	assert.NoError(t, err)
 
-	val, ok = v.Get("foo")
-	assert.False(t, ok)
+	_, err = v.GetBytes("foo")
+	assert.Error(t, err)
 }

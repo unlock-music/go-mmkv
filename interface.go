@@ -9,5 +9,7 @@ type Manager interface {
 
 type Vault interface {
 	Keys() []string
-	Get(key string) ([]byte, bool)
+	GetRaw(key string) ([]byte, bool)
+	GetBytes(key string) ([]byte, error)
+	GetString(key string) (string, error)
 }

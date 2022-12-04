@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/exp/maps"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 type vault map[string][]byte
@@ -16,9 +17,31 @@ func (v vault) Keys() []string {
 	return maps.Keys(v)
 }
 
-func (v vault) Get(key string) ([]byte, bool) {
+func (v vault) GetRaw(key string) ([]byte, bool) {
 	val, ok := v[key]
 	return val, ok
+}
+
+func (v vault) GetBytes(key string) ([]byte, error) {
+	raw, ok := v[key]
+	if !ok {
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+
+	val, n := protowire.ConsumeBytes(raw)
+	if n < 0 {
+		return nil, fmt.Errorf("invalid protobuf bytes")
+	}
+
+	return val, nil
+}
+
+func (v vault) GetString(key string) (string, error) {
+	val, err := v.GetBytes(key)
+	if err != nil {
+		return "", err
+	}
+	return string(val), nil
 }
 
 // metadata is optional. but if it exists, validate with it.
