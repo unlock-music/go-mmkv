@@ -1,4 +1,4 @@
-module unlock-music.dev/mmkv
+module git.unlock-music.dev/awalol/go-mmkv
 
 go 1.19
 
