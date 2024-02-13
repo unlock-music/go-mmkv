@@ -5,6 +5,7 @@ type Manager interface {
 	// If the vault does not exist, it will be created.
 	// If id is empty, DefaultVaultID will be used.
 	OpenVault(id string) (Vault, error)
+	OpenVaultCrypto(id string, cryptoKey string) (Vault, error)
 }
 
 type Vault interface {

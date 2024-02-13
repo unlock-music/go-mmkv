@@ -12,7 +12,7 @@ func Test_loadVault(t *testing.T) {
 	file, err := os.Open("./testdata/mmkv.default")
 	require.NoError(t, err)
 
-	v, err := loadVault(file, nil)
+	v, err := loadVault(file, nil, "")
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(v.Keys()))

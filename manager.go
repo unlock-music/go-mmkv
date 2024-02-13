@@ -42,7 +42,7 @@ func (m *manager) OpenVault(id string) (Vault, error) {
 		return v, nil
 	}
 
-	vault, err := m.openVault(id)
+	vault, err := m.openVault(id, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open vault: %w", err)
 	}
@@ -51,7 +51,25 @@ func (m *manager) OpenVault(id string) (Vault, error) {
 	return vault, nil
 }
 
-func (m *manager) openVault(id string) (Vault, error) {
+func (m *manager) OpenVaultCrypto(id string, cryptoKey string) (Vault, error) {
+	if id == "" {
+		id = DefaultVaultID
+	}
+
+	if v, ok := m.vaults[id]; ok {
+		return v, nil
+	}
+
+	vault, err := m.openVault(id, cryptoKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open vault: %w", err)
+	}
+	m.vaults[id] = vault
+
+	return vault, nil
+}
+
+func (m *manager) openVault(id string, cryptoKey string) (Vault, error) {
 	metaFile, err := os.Open(path.Join(m.dir, id+".crc"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open metadata file: %w", err)
@@ -69,7 +87,7 @@ func (m *manager) openVault(id string) (Vault, error) {
 		return nil, fmt.Errorf("failed to load metadata: %w", err)
 	}
 
-	v, err := loadVault(vaultFile, meta)
+	v, err := loadVault(vaultFile, meta, cryptoKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load vault: %w", err)
 	}

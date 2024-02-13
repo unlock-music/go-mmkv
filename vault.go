@@ -1,6 +1,8 @@
 package mmkv
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -44,8 +46,8 @@ func (v vault) GetString(key string) (string, error) {
 	return string(val), nil
 }
 
-// metadata is optional. but if it exists, validate with it.
-func loadVault(src io.Reader, m *metadata) (Vault, error) {
+// metadata and cryptoKey are optional. but if it exists, validate with them.
+func loadVault(src io.Reader, m *metadata, cryptoKey string) (Vault, error) {
 	fileSizeBuf := make([]byte, 4)
 	_, err := io.ReadFull(src, fileSizeBuf)
 	if err != nil {
@@ -65,6 +67,19 @@ func loadVault(src io.Reader, m *metadata) (Vault, error) {
 
 	if m != nil && m.crc32 != crc32.ChecksumIEEE(buf) {
 		return nil, fmt.Errorf("metadata and vault payload crc32 mismatch")
+	}
+
+	// 将数据库完整解密
+	if len(cryptoKey) > 0 {
+		m_key := make([]byte, aes.BlockSize) // 16 bytes key
+		copy(m_key, cryptoKey)
+
+		block, err := aes.NewCipher(m_key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create aes cipher")
+		}
+		stream := cipher.NewCFBDecrypter(block, m.aesVector)
+		stream.XORKeyStream(buf, buf)
 	}
 
 	v := make(vault)
