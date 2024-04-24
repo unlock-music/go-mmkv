@@ -8,9 +8,9 @@ import (
 	"hash/crc32"
 	"io"
 
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/encoding/protowire"
+	"unlock-music.dev/mmkv/internal"
 )
 
 type vault map[string][]byte
@@ -87,7 +87,7 @@ func loadVault(src io.Reader, m *metadata, cryptoKey string) (Vault, error) {
 	// mmkv is not really protobuf compatible,
 	// type of key & value (the first 4 bytes) is incorrect.
 	// so skip the first 4 bytes & manually parse the rest.
-	rd := proto.NewBuffer(buf[4:])
+	rd := internal.NewProtoBuffer(buf[4:])
 
 	for {
 		if len(rd.Unread()) == 0 {
