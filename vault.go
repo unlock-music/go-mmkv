@@ -1,4 +1,4 @@
-package mmkv
+package go_mmkv
 
 import (
 	"crypto/aes"
@@ -8,9 +8,9 @@ import (
 	"hash/crc32"
 	"io"
 
+	"github.com/unlock-music/go-mmkv/internal"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/encoding/protowire"
-	"unlock-music.dev/mmkv/internal"
 )
 
 type vault map[string][]byte

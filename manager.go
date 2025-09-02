@@ -1,4 +1,4 @@
-package mmkv
+package go_mmkv
 
 import (
 	"fmt"

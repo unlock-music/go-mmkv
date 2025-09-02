@@ -1,4 +1,4 @@
-package mmkv
+package go_mmkv
 
 type Manager interface {
 	// OpenVault opens a vault with the given id.
