@@ -33,6 +33,24 @@ func TestMMKVReader(t *testing.T) {
 		assert.Equal(t, "unit", val2)
 	})
 
+	t.Run("ReadIntValue", func(t *testing.T) {
+		mmkv, err := os.Open("./testdata/mmkv_int")
+		assert.NoError(t, err)
+		assert.NotNil(t, mmkv)
+		defer mmkv.Close()
+
+		r, err := NewMMKVReader(mmkv, nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+
+		key1, err := r.ReadInt()
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(0x16e), key1)
+		val1, err := r.ReadInt()
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(0x16c), val1)
+	})
+
 	t.Run("Crypto", func(t *testing.T) {
 		mmkv, err := os.Open("./testdata/crypto")
 		assert.NoError(t, err)

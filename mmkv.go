@@ -81,7 +81,7 @@ func (p *MMKVReader) ReadInt() (value uint64, err error) {
 			return 0, err
 		}
 
-		value |= uint64(b) << shift
+		value |= uint64(b&0x7f) << shift
 		shift += 7
 
 		if b&0x80 == 0 {
