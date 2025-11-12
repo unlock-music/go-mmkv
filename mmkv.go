@@ -92,6 +92,29 @@ func (p *MMKVReader) ReadInt() (value uint64, err error) {
 	return value, nil
 }
 
+func (p *MMKVReader) ReadIntSafe(maxBytes uint64) (value uint64, bytesRead uint64, err error) {
+	bytesRead = 0
+	value, shift := 0, 0
+
+	for bytesRead < maxBytes {
+		b, err := p.readByte()
+		if err != nil {
+			return value, bytesRead, err
+		}
+
+		bytesRead += 1
+
+		value |= uint64(b&0x7f) << shift
+		shift += 7
+
+		if b&0x80 == 0 {
+			return value, bytesRead, nil
+		}
+	}
+
+	return 0, bytesRead, fmt.Errorf("ReadIntSafe: exceeded maxBytes %d", maxBytes)
+}
+
 func (p *MMKVReader) ReadBytes(n int64) (data []byte, err error) {
 	if p.BytesAvailable() < n {
 		return nil, io.EOF
@@ -108,6 +131,29 @@ func (p *MMKVReader) ReadBytes(n int64) (data []byte, err error) {
 
 	p.offset += int64(readBytes)
 	return buf[:readBytes], nil
+}
+
+func (p *MMKVReader) ReadStringSafe(maxBytes uint64) (value string, bytesRead uint64, err error) {
+	// String [
+	//   len: int,
+	//   data: byte[int], # utf-8
+	// ]
+
+	len, bytesRead, err := p.ReadIntSafe(maxBytes)
+	if err != nil {
+		return "", bytesRead, err
+	}
+
+	maxBytes -= bytesRead
+	strlenToRead := min(maxBytes, len)
+
+	data, err := p.ReadBytes(int64(strlenToRead))
+	if err != nil {
+		return "", bytesRead, err
+	}
+	bytesRead += uint64(strlenToRead)
+
+	return string(data), bytesRead, nil
 }
 
 func (p *MMKVReader) ReadString() (value string, err error) {
@@ -144,13 +190,22 @@ func (p *MMKVReader) ReadStringValue() (value string, err error) {
 	}
 
 	expectedOffset := p.offset + int64(container_len)
-	value, err = p.ReadString()
+	value, bytesRead, err := p.ReadStringSafe(container_len)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("ReadStringValue: could not safely read container: %v", err)
+	}
+	fmt.Printf("bytesRead: %d, container_len: %d\n", bytesRead, container_len)
+	if bytesRead < container_len {
+		// skip remaining bytes
+		skipBytes := int64(container_len - bytesRead)
+		_, err = p.ReadBytes(skipBytes)
+		if err != nil {
+			return "", fmt.Errorf("ReadStringValue: could not skip remaining bytes: %v", err)
+		}
 	}
 
 	if p.offset != expectedOffset {
-		return "", fmt.Errorf("readStringValue: offset mismatch (expect: %d, actual: %d)", expectedOffset, p.offset)
+		return "", fmt.Errorf("ReadStringValue: offset mismatch (expect: %d, actual: %d)", expectedOffset, p.offset)
 	}
 	return value, nil
 }

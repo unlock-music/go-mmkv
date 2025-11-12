@@ -33,6 +33,38 @@ func TestMMKVReader(t *testing.T) {
 		assert.Equal(t, "unit", val2)
 	})
 
+	t.Run("ReadStringWithOverlap", func(t *testing.T) {
+		mmkv, err := os.Open("./testdata/mmkv.string_overlap")
+		assert.NoError(t, err)
+		assert.NotNil(t, mmkv)
+		defer mmkv.Close()
+
+		r, err := NewMMKVReader(mmkv, nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+
+		key1, err := r.ReadKey()
+		assert.NoError(t, err)
+		assert.Equal(t, "world", key1)
+		val1, err := r.ReadStringValue()
+		assert.NoError(t, err)
+		assert.Equal(t, "hello", val1)
+
+		key2, err := r.ReadKey()
+		assert.NoError(t, err)
+		assert.Equal(t, "test", key2)
+		val2, err := r.ReadStringValue()
+		assert.NoError(t, err)
+		assert.Equal(t, "unit", val2)
+
+		key3, err := r.ReadKey()
+		assert.NoError(t, err)
+		assert.Equal(t, "A", key3)
+		val3, err := r.ReadStringValue()
+		assert.NoError(t, err)
+		assert.Equal(t, "", val3)
+	})
+
 	t.Run("ReadIntValue", func(t *testing.T) {
 		mmkv, err := os.Open("./testdata/mmkv_int")
 		assert.NoError(t, err)

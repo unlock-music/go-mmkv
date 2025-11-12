@@ -1,6 +1,6 @@
 module github.com/unlock-music/go-mmkv
 
-go 1.19
+go 1.25
 
 require github.com/stretchr/testify v1.9.0
 
