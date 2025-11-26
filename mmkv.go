@@ -140,7 +140,7 @@ func (p *MMKVReader) ReadStringSafe(maxBytes uint64) (value string, bytesRead ui
 	// ]
 
 	len, bytesRead, err := p.ReadIntSafe(maxBytes)
-	if err != nil {
+	if err != nil || len == 0 {
 		return "", bytesRead, err
 	}
 
@@ -163,7 +163,7 @@ func (p *MMKVReader) ReadString() (value string, err error) {
 	// ]
 
 	len, err := p.ReadInt()
-	if err != nil {
+	if err != nil || len == 0 {
 		return "", err
 	}
 
@@ -189,12 +189,16 @@ func (p *MMKVReader) ReadStringValue() (value string, err error) {
 		return "", err
 	}
 
+	// empty container? skip
+	if container_len == 0 {
+		return "", nil
+	}
+
 	expectedOffset := p.offset + int64(container_len)
 	value, bytesRead, err := p.ReadStringSafe(container_len)
 	if err != nil {
 		return "", fmt.Errorf("ReadStringValue: could not safely read container: %v", err)
 	}
-	fmt.Printf("bytesRead: %d, container_len: %d\n", bytesRead, container_len)
 	if bytesRead < container_len {
 		// skip remaining bytes
 		skipBytes := int64(container_len - bytesRead)
