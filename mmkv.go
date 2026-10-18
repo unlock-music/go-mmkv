@@ -49,12 +49,16 @@ func NewMMKVReader(mmkv io.Reader, password []byte, crc io.Reader) (inst *MMKVRe
 	return inst, nil
 }
 
+func (p *MMKVReader) SetMmkvFileSize(size int64) {
+	p.size = size
+}
+
 func (p *MMKVReader) BytesAvailable() int64 {
 	return p.size - p.offset
 }
 
 func (p *MMKVReader) IsEOF() bool {
-	return p.offset >= p.size
+	return p.BytesAvailable() <= 0
 }
 
 func (p *MMKVReader) readByte() (value byte, err error) {
