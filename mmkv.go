@@ -7,18 +7,23 @@ import (
 )
 
 type MMKVInfo struct {
-	CRC32      uint32
-	Version    uint32
-	Sequence   uint32
-	IV         [16]byte
-	ActualSize uint32
-	Flags      uint32
+	CRC32          uint32
+	Version        uint32
+	Sequence       uint32
+	IV             [16]byte
+	ActualSize     uint32
+	LastActualSize uint32
+	LastCRCDigest  uint32
+	Flags          uint64
 }
+
+const mmkvMetaSize = 0x70
 
 type MMKVReader struct {
 	reader io.Reader
 	offset int64
 	size   int64
+	Info   *MMKVInfo
 }
 
 func readU32LE(reader io.Reader) (uint32, error) {
@@ -31,7 +36,7 @@ func readU32LE(reader io.Reader) (uint32, error) {
 }
 
 func readMeta(reader io.Reader) (*MMKVInfo, error) {
-	buf := make([]byte, 36)
+	buf := make([]byte, mmkvMetaSize)
 	n, err := reader.Read(buf)
 	if err != nil {
 		return nil, err
@@ -41,18 +46,20 @@ func readMeta(reader io.Reader) (*MMKVInfo, error) {
 	}
 
 	info := &MMKVInfo{
-		CRC32:      binary.LittleEndian.Uint32(buf[0x00:0x04]),
-		Version:    binary.LittleEndian.Uint32(buf[0x04:0x08]),
-		Sequence:   binary.LittleEndian.Uint32(buf[0x08:0x0C]),
-		IV:         [16]byte(buf[0x0C:0x1C]),
-		ActualSize: binary.LittleEndian.Uint32(buf[0x1C:0x20]),
-		Flags:      binary.LittleEndian.Uint32(buf[0x20:0x24]),
+		CRC32:          binary.LittleEndian.Uint32(buf[0x00:0x04]),
+		Version:        binary.LittleEndian.Uint32(buf[0x04:0x08]),
+		Sequence:       binary.LittleEndian.Uint32(buf[0x08:0x0C]),
+		IV:             [16]byte(buf[0x0C:0x1C]),
+		ActualSize:     binary.LittleEndian.Uint32(buf[0x1C:0x20]),
+		LastActualSize: binary.LittleEndian.Uint32(buf[0x20:0x24]),
+		LastCRCDigest:  binary.LittleEndian.Uint32(buf[0x24:0x28]),
+		Flags:          binary.LittleEndian.Uint64(buf[0x68:0x70]),
 	}
 	return info, nil
 }
 
-// NewMMKVReader creates a new MMKVParser instance.
-// mmkv is the main MMKV file reader, while crc can be nil if the file is not encrypted.
+// NewMMKVReader opens an MMKV data stream.
+// crc may be nil for plaintext; password decrypts with AES-128-CFB using IV from crc.
 func NewMMKVReader(source io.Reader, maxReadSize int64, password []byte, crc io.Reader) (r *MMKVReader, err error) {
 	actualSize, err := readU32LE(source)
 	if err != nil {
@@ -60,8 +67,9 @@ func NewMMKVReader(source io.Reader, maxReadSize int64, password []byte, crc io.
 	}
 
 	// Crypto MMKV: Requires CRC file to be present.
+	var meta *MMKVInfo
 	if crc != nil {
-		meta, err := readMeta(crc)
+		meta, err = readMeta(crc)
 		if err != nil {
 			return nil, err
 		}
@@ -84,6 +92,7 @@ func NewMMKVReader(source io.Reader, maxReadSize int64, password []byte, crc io.
 		reader: source,
 		offset: 4,
 		size:   size,
+		Info:   meta,
 	}
 	_, err = r.ReadInt()
 	return r, err
