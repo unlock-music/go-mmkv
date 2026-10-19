@@ -3,7 +3,7 @@ package go_mmkv
 import "io"
 
 func MMKVToMap(mmkv io.Reader, password []byte, crc io.Reader) (result map[string]string, err error) {
-	parser, err := NewMMKVReader(mmkv, password, crc)
+	parser, err := NewMMKVReader(mmkv, -1, password, crc)
 	if err != nil {
 		return nil, err
 	}

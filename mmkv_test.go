@@ -14,7 +14,7 @@ func TestMMKVReader(t *testing.T) {
 		assert.NotNil(t, mmkv)
 		defer mmkv.Close()
 
-		r, err := NewMMKVReader(mmkv, nil, nil)
+		r, err := NewMMKVReader(mmkv, -1, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 
@@ -39,7 +39,7 @@ func TestMMKVReader(t *testing.T) {
 		assert.NotNil(t, mmkv)
 		defer mmkv.Close()
 
-		r, err := NewMMKVReader(mmkv, nil, nil)
+		r, err := NewMMKVReader(mmkv, -1, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 
@@ -71,7 +71,7 @@ func TestMMKVReader(t *testing.T) {
 		assert.NotNil(t, mmkv)
 		defer mmkv.Close()
 
-		r, err := NewMMKVReader(mmkv, nil, nil)
+		r, err := NewMMKVReader(mmkv, -1, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 
@@ -94,7 +94,7 @@ func TestMMKVReader(t *testing.T) {
 		assert.NotNil(t, crc)
 		defer crc.Close()
 
-		r, err := NewMMKVReader(mmkv, []byte("unlock-music:key"), crc)
+		r, err := NewMMKVReader(mmkv, -1, []byte("unlock-music:key"), crc)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 

@@ -6,51 +6,87 @@ import (
 	"io"
 )
 
+type MMKVInfo struct {
+	CRC32      uint32
+	Version    uint32
+	Sequence   uint32
+	IV         [16]byte
+	ActualSize uint32
+	Flags      uint32
+}
+
 type MMKVReader struct {
 	reader io.Reader
 	offset int64
 	size   int64
 }
 
-// NewMMKVReader creates a new MMKVParser instance.
-// mmkv is the main MMKV file reader, while crc can be nil if the file is not encrypted.
-func NewMMKVReader(mmkv io.Reader, password []byte, crc io.Reader) (inst *MMKVReader, err error) {
-	buf_payload_len := make([]byte, 4)
-	_, err = mmkv.Read(buf_payload_len)
+func readU32LE(reader io.Reader) (uint32, error) {
+	buf := make([]byte, 4)
+	_, err := reader.Read(buf)
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint32(buf), nil
+}
+
+func readMeta(reader io.Reader) (*MMKVInfo, error) {
+	buf := make([]byte, 36)
+	n, err := reader.Read(buf)
 	if err != nil {
 		return nil, err
 	}
+	if n != len(buf) {
+		return nil, fmt.Errorf("go-mmkv: metadata read EOF: got %d bytes, expected %d bytes", n, len(buf))
+	}
 
-	if password != nil && crc != nil {
-		crc_buffer := make([]byte, 0x0C+16)
-		n, err := crc.Read(crc_buffer)
+	info := &MMKVInfo{
+		CRC32:      binary.LittleEndian.Uint32(buf[0x00:0x04]),
+		Version:    binary.LittleEndian.Uint32(buf[0x04:0x08]),
+		Sequence:   binary.LittleEndian.Uint32(buf[0x08:0x0C]),
+		IV:         [16]byte(buf[0x0C:0x1C]),
+		ActualSize: binary.LittleEndian.Uint32(buf[0x1C:0x20]),
+		Flags:      binary.LittleEndian.Uint32(buf[0x20:0x24]),
+	}
+	return info, nil
+}
+
+// NewMMKVReader creates a new MMKVParser instance.
+// mmkv is the main MMKV file reader, while crc can be nil if the file is not encrypted.
+func NewMMKVReader(source io.Reader, maxReadSize int64, password []byte, crc io.Reader) (r *MMKVReader, err error) {
+	actualSize, err := readU32LE(source)
+	if err != nil {
+		return nil, fmt.Errorf("go-mmkv: failed to read actual size from mmkv: %v", err)
+	}
+
+	// Crypto MMKV: Requires CRC file to be present.
+	if crc != nil {
+		meta, err := readMeta(crc)
 		if err != nil {
 			return nil, err
 		}
-		if n != len(crc_buffer) {
-			return nil, fmt.Errorf("NewMMKVParser: crc read EOF: got %d bytes, expected %d bytes", n, len(crc_buffer))
+
+		// Wrap with crypto reader when password is provided
+		if password != nil {
+			if source, err = NewMMKVCrypto(source, password, meta.IV[:]); err != nil {
+				return nil, fmt.Errorf("NewMMKVParser: init crypto fail: %v", err)
+			}
 		}
-		iv := crc_buffer[0x0C : 0x0C+16]
-		mmkv, err = NewMMKVCrypto(mmkv, password, iv)
-		if err != nil {
-			return nil, fmt.Errorf("NewMMKVParser: init crypto fail: %v", err)
-		}
+		actualSize = meta.ActualSize
 	}
 
-	payload_len := int64(binary.LittleEndian.Uint32(buf_payload_len))
+	size := int64(actualSize) + 4
+	if maxReadSize >= 0 {
+		size = min(size, maxReadSize)
+	}
 
-	inst = &MMKVReader{
-		reader: mmkv,
+	r = &MMKVReader{
+		reader: source,
 		offset: 4,
-		size:   payload_len + 4,
+		size:   size,
 	}
-	inst.ReadInt()
-
-	return inst, nil
-}
-
-func (p *MMKVReader) SetMmkvFileSize(size int64) {
-	p.size = size
+	_, err = r.ReadInt()
+	return r, err
 }
 
 func (p *MMKVReader) BytesAvailable() int64 {
